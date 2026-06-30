@@ -1,0 +1,18 @@
+id: jcode.ext.sqlserver
+name: SQL Server
+version: 0.2.0
+type: dbmanager
+publisher: jcode
+supportedArches: [arm64]
+description: A pure Microsoft SQL Server client — connect, browse databases and tables, edit rows, and back up/restore.
+longDescription: >
+  A pure Microsoft SQL Server client and database manager. Use the ARM64-native
+  sqlcmd client (installed by this extension) to connect to any reachable SQL
+  Server — a remote host, a cloud instance, or a local x86 VM created with the
+  VM Manager extension. Run ad-hoc queries, browse databases and tables, view
+  the top 1000 rows, create / rename / drop tables, run INSERT / UPDATE / DELETE
+  via the DML helper, and back up or restore databases. There is no local
+  engine; to run SQL Server itself, pair this with the VM Manager extension or
+  connect to any existing server.
+requires:
+  extensions: []

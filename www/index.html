@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Server</title>
+<style>
+  :root {
+    --bg:#14161c; --panel:#1b1e26; --panel2:#20242e; --line:#2c313c;
+    --fg:#e6e8ee; --muted:#9aa3b2; --accent:#0ea5e9; --ok:#34d399; --bad:#f87171; --warn:#fbbf24;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--fg);font-family:-apple-system,Roboto,"Segoe UI",sans-serif;padding:18px;-webkit-user-select:none;user-select:none}
+  h1{font-size:22px;margin:0 0 2px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+  .card h2{font-size:14px;margin:0 0 12px;font-weight:600}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .pill{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--panel2);color:var(--muted)}
+  .pill.ok{color:#062;background:var(--ok)} .pill.bad{color:#400;background:var(--bad)} .pill.warn{color:#432;background:var(--warn)}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  input,textarea{font:inherit;background:#0d0f14;border:1px solid var(--line);border-radius:8px;color:var(--fg);padding:9px 10px;-webkit-user-select:text;user-select:text}
+  input:focus,textarea:focus{outline:none;border-color:var(--accent)}
+  textarea{width:100%;min-height:90px;font-family:ui-monospace,monospace;font-size:13px;resize:vertical}
+  .btns{display:flex;flex-wrap:wrap;gap:10px}
+  button{font:inherit;font-size:14px;font-weight:600;border:0;border-radius:10px;padding:11px 16px;background:var(--accent);color:#04222e;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  button.secondary{background:var(--panel2);color:var(--fg);border:1px solid var(--line)}
+  button:disabled{opacity:.5;cursor:default}
+  .label{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 8px}
+  pre.out{background:#0d0f14;border:1px solid var(--line);border-radius:10px;padding:12px;margin:0;max-height:280px;overflow:auto;font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.45;white-space:pre-wrap;word-break:break-word;color:#cdd3df;-webkit-user-select:text;user-select:text}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 0}
+  .chip{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:7px 13px;background:var(--panel2);color:var(--fg);cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .chip.active{background:var(--accent);color:#04222e;border-color:var(--accent)}
+  .empty{color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+  <h1>SQL Server</h1>
+  <div class="sub">A pure client: connect to a SQL Server you run elsewhere — a remote host, a cloud instance, or a local x86 VM created with the VM Manager — then browse and manage it.</div>
+
+  <div class="card">
+    <h2>Client tools</h2>
+    <div class="row">
+      <span id="cliPill" class="pill">Checking…</span>
+      <span id="cliVer" style="color:var(--muted);font-size:12px;font-family:ui-monospace,monospace"></span>
+    </div>
+    <div class="btns" style="margin-top:12px">
+      <button id="cliInstall">Install sqlcmd (ARM64)</button>
+      <button id="cliCheck" class="secondary">Refresh</button>
+    </div>
+    <pre class="out" id="cliOut" style="margin-top:12px;display:none"></pre>
+  </div>
+
+  <div class="card">
+    <h2>Connection</h2>
+    <div class="grid">
+      <div class="field"><label>Server</label><input id="server" value="localhost,1433"></div>
+      <div class="field"><label>Database</label><input id="db" value="master"></div>
+      <div class="field"><label>User</label><input id="user" value="sa"></div>
+      <div class="field"><label>Password</label><input id="pass" type="password" placeholder="(password)"></div>
+    </div>
+    <div class="btns">
+      <button id="testConn" class="secondary">Test connection</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Query</h2>
+    <textarea id="sql">SELECT @@VERSION;</textarea>
+    <div class="btns" style="margin-top:10px"><button id="runQuery">Run query</button></div>
+    <div class="label">Results</div>
+    <pre class="out" id="qOut">Run a query to see results.</pre>
+  </div>
+
+  <div class="card">
+    <h2>Databases</h2>
+    <div class="btns"><button id="listDbs" class="secondary">List databases</button></div>
+    <div class="chips" id="dbChips"><span class="empty">List databases to browse them.</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Tables</h2>
+    <div class="row" style="margin-bottom:8px">
+      <span class="pill" id="tblDb">no database</span>
+      <button id="listTbls" class="secondary">List tables</button>
+    </div>
+    <div class="chips" id="tblChips"><span class="empty">Pick a database, then list its tables.</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Rows</h2>
+    <div class="row" style="margin-bottom:8px">
+      <span class="pill" id="rowTbl">no table</span>
+      <button id="viewRows" class="secondary">View top 1000</button>
+    </div>
+    <pre class="out" id="rowOut">Pick a table to view its rows.</pre>
+  </div>
+
+  <div class="card">
+    <h2>Table operations</h2>
+    <div class="label">Create table (DDL)</div>
+    <textarea id="ddl" placeholder="CREATE TABLE dbo.MyTable (Id INT PRIMARY KEY, Name NVARCHAR(100));"></textarea>
+    <div class="btns" style="margin:10px 0 4px"><button id="runDdl">Run DDL</button></div>
+    <div class="label">Selected table</div>
+    <div class="grid">
+      <div class="field"><label>Rename to (schema.name)</label><input id="renameTo" placeholder="dbo.NewName"></div>
+      <div class="field" style="justify-content:flex-end"><div class="btns"><button id="renameTbl" class="secondary">Rename</button><button id="dropTbl" class="secondary">Drop table</button></div></div>
+    </div>
+    <pre class="out" id="opOut" style="margin-top:12px;display:none"></pre>
+  </div>
+
+  <div class="card">
+    <h2>Row editing (DML)</h2>
+    <div class="sub" style="margin:0 0 10px">Run INSERT / UPDATE / DELETE against the selected table. Inline grid-edit is not yet available.</div>
+    <textarea id="dml" placeholder="UPDATE <table> SET col = val WHERE …"></textarea>
+    <div class="btns" style="margin-top:10px"><button id="runDml">Run DML</button></div>
+    <pre class="out" id="dmlOut" style="margin-top:12px;display:none"></pre>
+  </div>
+
+  <div class="card">
+    <h2>Backup / Restore</h2>
+    <div class="sub" style="margin:0 0 10px">These run on the SERVER's filesystem, not this device.</div>
+    <div class="field" style="margin-bottom:10px"><label>Backup file path (on server)</label><input id="bakPath" placeholder="/var/opt/mssql/backup/<db>.bak"></div>
+    <div class="btns"><button id="backupDb" class="secondary">Backup</button><button id="restoreDb" class="secondary">Restore</button></div>
+    <pre class="out" id="bakOut" style="margin-top:12px;display:none"></pre>
+  </div>
+
+<script>
+window.JCode = (function () {
+  const pending = {}; let seq = 0;
+  return {
+    exec(command, timeoutMs) {
+      return new Promise((resolve) => {
+        const id = 'r' + (seq++); pending[id] = resolve;
+        try { window.JCodeNative.exec(id, command, timeoutMs || 60000); }
+        catch (e) { delete pending[id]; resolve({ error: 'bridge unavailable: ' + e }); }
+      });
+    },
+    _onExec(id, payload) {
+      const cb = pending[id]; if (!cb) return; delete pending[id];
+      let r; try { r = JSON.parse(payload); } catch (e) { r = { error: payload }; }
+      cb(r);
+    }
+  };
+})();
+
+const $ = (id) => document.getElementById(id);
+function out(r){ return ((r.stdout||'')+(r.stderr||'')).replace(/\s+$/,''); }
+function sh(v){ return "'" + String(v).replace(/'/g, "'\\''") + "'"; }
+function pill(el, text, cls){ el.className='pill'+(cls?' '+cls:''); el.textContent=text; }
+function show(el, text){ el.style.display='block'; el.textContent=text; }
+
+function conn(){
+  return { server: $('server').value.trim(), db: $('db').value.trim(),
+           user: $('user').value.trim(), pass: $('pass').value };
+}
+function sqlcmdBase(c){
+  return 'sqlcmd -S ' + sh(c.server) + ' -U ' + sh(c.user) + ' -P ' + sh(c.pass) +
+         ' -d ' + sh(c.db || 'master') + ' -C -l 15';
+}
+
+// ---- client tools ----
+async function checkCli(){
+  pill($('cliPill'), 'Checking…'); $('cliVer').textContent='';
+  const r = await JCode.exec('if command -v sqlcmd >/dev/null 2>&1; then sqlcmd --version 2>&1 | head -1; else echo __NONE__; fi');
+  const t = out(r);
+  if (t.indexOf('__NONE__')>=0 || t===''){ pill($('cliPill'),'Not installed','bad'); }
+  else { pill($('cliPill'),'Installed','ok'); $('cliVer').textContent=t.split('\n')[0]; }
+}
+async function installCli(){
+  const o=$('cliOut'); show(o,'Installing sqlcmd from packages.microsoft.com …');
+  $('cliInstall').disabled=true;
+  const script = [
+    'export DEBIAN_FRONTEND=noninteractive',
+    'dpkg --configure -a >/dev/null 2>&1 || true',
+    'set -e',
+    'apt-get update -y >/dev/null 2>&1 || true',
+    'apt-get install -y -o DPkg::Lock::Timeout=180 curl gnupg ca-certificates apt-transport-https 2>&1 | tail -3',
+    'curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg',
+    '. /etc/os-release',
+    'echo "deb [signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/ubuntu/${VERSION_ID}/prod ${VERSION_CODENAME} main" > /etc/apt/sources.list.d/mssql.list',
+    'apt-get update -y 2>&1 | tail -3',
+    'apt-get install -y -o DPkg::Lock::Timeout=180 sqlcmd 2>&1 | tail -6',
+    'echo "EXIT:$?"; sqlcmd --version 2>&1 | head -1'
+  ].join('\n');
+  const r = await JCode.exec(script, 900000);
+  show(o, out(r) || r.error || '(no output)');
+  $('cliInstall').disabled=false; checkCli();
+}
+
+// ---- connection / query ----
+async function testConn(){
+  const o=$('qOut'); o.textContent='Connecting…';
+  const r = await JCode.exec(sqlcmdBase(conn()) + ' -Q "SELECT @@VERSION" 2>&1', 60000);
+  o.textContent = out(r) || r.error || '(no output)';
+}
+async function runQuery(){
+  const c=conn(); const sql=$('sql').value;
+  const o=$('qOut'); o.textContent='Running…';
+  const cmd = sqlcmdBase(c) + ' -Q ' + sh(sql) + ' 2>&1';
+  const r = await JCode.exec(cmd, 120000);
+  o.textContent = out(r) || r.error || '(no output)';
+}
+
+// ---- database management ----
+let selTable = '';
+function bb(name){ return '[' + String(name).replace(/]/g, ']]') + ']'; }
+function quoteQualified(name){ return String(name).split('.').filter(Boolean).map(bb).join('.'); }
+function sqlStr(v){ return "'" + String(v).replace(/'/g, "''") + "'"; }
+function lines(r){
+  return out(r).split('\n').map(s => s.trim())
+    .filter(s => s && !/rows affected|^Msg \d+|^Changed database|^\(\d+ rows/.test(s));
+}
+function err(r){
+  const t = out(r);
+  return (/^Msg \d+|Sqlcmd:|Login failed|Cannot open|error:|Error:/m.test(t)) ? t : '';
+}
+async function runScalarList(sql){
+  const cmd = sqlcmdBase(conn()) + ' -h -1 -W -Q ' + sh(sql) + ' 2>&1';
+  return JCode.exec(cmd, 60000);
+}
+
+async function listDbs(){
+  const wrap=$('dbChips'); wrap.innerHTML='<span class="empty">Loading…</span>';
+  const r = await runScalarList('SET NOCOUNT ON; SELECT name FROM sys.databases ORDER BY name');
+  const e = err(r);
+  if (e){ wrap.innerHTML=''; const p=document.createElement('pre'); p.className='out'; p.textContent=e; wrap.appendChild(p); return; }
+  const names = lines(r);
+  wrap.innerHTML='';
+  if (!names.length){ wrap.innerHTML='<span class="empty">No databases.</span>'; return; }
+  names.forEach(n => {
+    const c=document.createElement('button'); c.className='chip'+($('db').value.trim()===n?' active':''); c.textContent=n;
+    c.onclick=()=>{ $('db').value=n; [...wrap.children].forEach(x=>x.classList.remove('active')); c.classList.add('active'); selTable=''; $('rowTbl').textContent='no table'; listTbls(); };
+    wrap.appendChild(c);
+  });
+}
+async function listTbls(){
+  const db=$('db').value.trim(); $('tblDb').textContent=db||'no database';
+  const wrap=$('tblChips'); wrap.innerHTML='<span class="empty">Loading…</span>';
+  const r = await runScalarList("SET NOCOUNT ON; SELECT TABLE_SCHEMA + '.' + TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE' ORDER BY 1");
+  const e = err(r);
+  if (e){ wrap.innerHTML=''; const p=document.createElement('pre'); p.className='out'; p.textContent=e; wrap.appendChild(p); return; }
+  const names = lines(r);
+  wrap.innerHTML='';
+  if (!names.length){ wrap.innerHTML='<span class="empty">No base tables.</span>'; return; }
+  names.forEach(n => {
+    const c=document.createElement('button'); c.className='chip'+(selTable===n?' active':''); c.textContent=n;
+    c.onclick=()=>{ selTable=n; $('rowTbl').textContent=n; [...wrap.children].forEach(x=>x.classList.remove('active')); c.classList.add('active'); $('renameTo').value=''; $('dml').value='UPDATE '+quoteQualified(n)+' SET col = val WHERE id = ?;'; viewRows(); };
+    wrap.appendChild(c);
+  });
+}
+async function viewRows(){
+  const o=$('rowOut');
+  if (!selTable){ o.textContent='Pick a table first.'; return; }
+  o.textContent='Loading…';
+  const cmd = sqlcmdBase(conn()) + ' -W -Q ' + sh('SET NOCOUNT ON; SELECT TOP 1000 * FROM '+quoteQualified(selTable)) + ' 2>&1';
+  const r = await JCode.exec(cmd, 120000);
+  o.textContent = out(r) || r.error || '(no rows)';
+}
+async function runDdl(){
+  const o=$('opOut'); const sql=$('ddl').value.trim();
+  if (!sql){ show(o,'Enter a CREATE TABLE statement.'); return; }
+  show(o,'Running…');
+  const r = await JCode.exec(sqlcmdBase(conn()) + ' -Q ' + sh(sql) + ' 2>&1', 60000);
+  show(o, out(r) || r.error || 'Done.'); listTbls();
+}
+async function dropTbl(){
+  const o=$('opOut');
+  if (!selTable){ show(o,'Pick a table first.'); return; }
+  if (!confirm('Drop table '+selTable+'? This cannot be undone.')) return;
+  show(o,'Dropping…');
+  const r = await JCode.exec(sqlcmdBase(conn()) + ' -Q ' + sh('DROP TABLE '+quoteQualified(selTable)) + ' 2>&1', 60000);
+  show(o, out(r) || r.error || 'Done.'); selTable=''; $('rowTbl').textContent='no table'; listTbls();
+}
+async function renameTbl(){
+  const o=$('opOut'); const to=$('renameTo').value.trim();
+  if (!selTable){ show(o,'Pick a table first.'); return; }
+  if (!to){ show(o,'Enter a new name.'); return; }
+  const newName = to.indexOf('.')>=0 ? to.split('.').pop() : to;
+  if (!confirm('Rename '+selTable+' to '+newName+'?')) return;
+  show(o,'Renaming…');
+  const r = await JCode.exec(sqlcmdBase(conn()) + ' -Q ' + sh("EXEC sp_rename "+sqlStr(selTable)+", "+sqlStr(newName)) + ' 2>&1', 60000);
+  show(o, out(r) || r.error || 'Done.'); selTable=''; $('rowTbl').textContent='no table'; listTbls();
+}
+async function runDml(){
+  const o=$('dmlOut'); const sql=$('dml').value.trim();
+  if (!sql){ show(o,'Enter a DML statement.'); return; }
+  if (/^\s*(update|delete)\b/i.test(sql) && !confirm('Run this '+(/^\s*delete/i.test(sql)?'DELETE':'UPDATE')+'? It modifies data.')) return;
+  show(o,'Running…');
+  const r = await JCode.exec(sqlcmdBase(conn()) + ' -Q ' + sh(sql) + ' 2>&1', 60000);
+  show(o, out(r) || r.error || 'Done.');
+  if (selTable) viewRows();
+}
+function bakPath(){
+  const db=$('db').value.trim()||'master';
+  return $('bakPath').value.trim() || '/var/opt/mssql/backup/'+db+'.bak';
+}
+async function backupDb(){
+  const o=$('bakOut'); const db=$('db').value.trim()||'master'; const path=bakPath();
+  show(o,'Backing up '+db+' to '+path+' …');
+  const sql = 'BACKUP DATABASE '+bb(db)+" TO DISK = N"+sqlStr(path)+' WITH INIT, FORMAT';
+  const r = await JCode.exec(sqlcmdBase(conn()) + ' -Q ' + sh(sql) + ' 2>&1', 600000);
+  show(o, out(r) || r.error || 'Done.');
+}
+async function restoreDb(){
+  const o=$('bakOut'); const db=$('db').value.trim()||'master'; const path=bakPath();
+  if (!confirm('Restore '+db+' from '+path+'? This overwrites the database.')) return;
+  show(o,'Restoring '+db+' from '+path+' …');
+  const sql = 'RESTORE DATABASE '+bb(db)+" FROM DISK = N"+sqlStr(path)+' WITH REPLACE';
+  const r = await JCode.exec(sqlcmdBase(conn()) + ' -Q ' + sh(sql) + ' 2>&1', 600000);
+  show(o, out(r) || r.error || 'Done.');
+}
+
+$('cliInstall').onclick=installCli; $('cliCheck').onclick=checkCli;
+$('testConn').onclick=testConn; $('runQuery').onclick=runQuery;
+$('listDbs').onclick=listDbs; $('listTbls').onclick=listTbls; $('viewRows').onclick=viewRows;
+$('runDdl').onclick=runDdl; $('dropTbl').onclick=dropTbl; $('renameTbl').onclick=renameTbl;
+$('runDml').onclick=runDml; $('backupDb').onclick=backupDb; $('restoreDb').onclick=restoreDb;
+
+checkCli();
+</script>
+</body>
+</html>
