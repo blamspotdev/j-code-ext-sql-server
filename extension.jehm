@@ -5,6 +5,7 @@ name: SQL Client
 version: 0.2.0
 type: dbmanager
 publisher: jcode
+authors: [jcode, blamspotdev]
 shortDescription: A pure SQL Server client — connect to any server, browse databases and tables, edit rows, and back up/restore.
 minJCodeVersion: 1.0.0
 targetJCodeVersion: 1.0.0
