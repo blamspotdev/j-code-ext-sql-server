@@ -2,7 +2,7 @@
 schema: 1
 uniqueName: jcode.ext.sqlclient
 name: SQL Client
-version: 0.2.0
+version: 0.2.1
 type: dbmanager
 publisher: jcode
 authors: [jcode, blamspotdev]
@@ -21,7 +21,7 @@ suggests:
   lsps: []
   extensions: []
 images:
-  icon: null
+  icon: media/icon.png
   samples: []
   walkthrough: []
 entry:
